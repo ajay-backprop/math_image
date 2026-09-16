@@ -1,0 +1,93 @@
+<div id="root"></div>
+<style>
+  #root {
+    background: radial-gradient(ellipse at center, #0a2e42 0%, #041824 65%, #010b12 100%);
+    border-radius: 12px;
+    padding: 24px;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #cfe8f3;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  #canvasWrap { position: relative; }
+  canvas { display: block; width: 100%; height: auto; border-radius: 8px; background: #020c14; }
+  h2 { margin: 0 0 4px 0; font-weight: 400; letter-spacing: 0.5px; font-size: 1.3em; color: #eaf6fb; }
+  .sub { font-family: 'Courier New', monospace; font-size: 0.78em; color: #6fa8c2; margin-bottom: 16px; line-height: 1.5; }
+  .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 20px; margin-top: 16px; font-family: 'Courier New', monospace; font-size: 0.8em; }
+  .ctrl label { display: flex; justify-content: space-between; color: #9cc5d8; margin-bottom: 4px; }
+  .ctrl span { color: #eaf6fb; }
+  input[type=range] { width: 100%; accent-color: #4fb8e0; }
+  button {
+    margin-top: 16px; background: transparent; border: 1px solid #4fb8e0; color: #cfe8f3;
+    padding: 8px 18px; border-radius: 20px; font-family: 'Courier New', monospace; font-size: 0.8em;
+    cursor: pointer; letter-spacing: 0.5px; transition: all .15s;
+  }
+  button:hover { background: #4fb8e0; color: #041824; }
+  .formula { font-family: 'Courier New', monospace; font-size: 0.72em; color: #5f96ac; margin-top: 14px; line-height: 1.6; border-top: 1px solid #144055; padding-top: 12px; }
+</style>
+<script>
+const root = document.getElementById('root');
+root.innerHTML = `
+  <h2>School of Fish — drawn only with equations</h2>
+  <div class="sub">x_n(t) = r(n)·cos(t+nφ) + A·sin(k·t+n·β)&nbsp;&nbsp;&nbsp;y_n(t) = r(n)·sin(t+nφ)·0.55 + B·cos(k·t+n·β)</div>
+  <div id="canvasWrap"><canvas id="c" width="1400" height="900"></canvas></div>
+  <div class="controls">
+    <div class="ctrl"><label>curves (n) <span id="vN">220</span></label><input id="rN" type="range" min="40" max="500" value="220"></div>
+    <div class="ctrl"><label>twist (φ) <span id="vPhi">2.4</span></label><input id="rPhi" type="range" min="0" max="10" step="0.01" value="2.4"></div>
+    <div class="ctrl"><label>wobble freq (k) <span id="vK">7</span></label><input id="rK" type="range" min="1" max="20" step="0.1" value="7"></div>
+    <div class="ctrl"><label>wobble amp (A,B) <span id="vAmp">26</span></label><input id="rAmp" type="range" min="0" max="80" value="26"></div>
+  </div>
+  <button id="regen">↻ new formula seed</button>
+  <div class="formula">Each curve is one continuous stroke, t ∈ [0, 2π]. Curve index n only shifts phase and radius —
+  the shoal shape emerges purely from how those hundreds of trig curves overlap. This is the same
+  principle Hamid Naderi Yeganeh uses (in Mathematica) to draw birds, fish, and faces from pure math.</div>
+`;
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const cx = W/2, cy = H/2 + 30;
+
+let seed = Math.random()*1000;
+
+function draw() {
+  const N   = parseInt(document.getElementById('rN').value);
+  const phi = parseFloat(document.getElementById('rPhi').value);
+  const k   = parseFloat(document.getElementById('rK').value);
+  const amp = parseFloat(document.getElementById('rAmp').value);
+  document.getElementById('vN').textContent = N;
+  document.getElementById('vPhi').textContent = phi.toFixed(2);
+  document.getElementById('vK').textContent = k.toFixed(1);
+  document.getElementById('vAmp').textContent = amp;
+
+  ctx.clearRect(0,0,W,H);
+  const grad = ctx.createRadialGradient(cx,cy,50,cx,cy,W*0.6);
+  grad.addColorStop(0,'#0d3a52'); grad.addColorStop(1,'#020c14');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+
+  const steps = 260;
+  for (let n = 0; n < N; n++) {
+    const rad = 60 + (n / N) * (W*0.42);
+    const phase = n * phi + seed;
+    const depth = n / N; // 0 = center, 1 = outer edge
+    const hue = 190 + depth*15;
+    const alpha = 0.10 + 0.55 * (1 - depth) * (0.4 + 0.6*Math.sin(n*0.7+seed));
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = (i/steps) * Math.PI * 2;
+      const wob = amp * (1 - depth*0.5);
+      const x = cx + rad*Math.cos(t+phase) + wob*Math.sin(k*t + n*0.31 + seed);
+      const y = cy + rad*Math.sin(t+phase)*0.55 + wob*0.5*Math.cos(k*t + n*0.31 + seed);
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle = `hsla(${hue}, 70%, ${70-depth*30}%, ${alpha})`;
+    ctx.lineWidth = 1.1 + (1-depth)*1.2;
+    ctx.stroke();
+  }
+}
+
+['rN','rPhi','rK','rAmp'].forEach(id => document.getElementById(id).addEventListener('input', draw));
+document.getElementById('regen').addEventListener('click', () => { seed = Math.random()*1000; draw(); });
+
+draw();
+</script>
